@@ -1,0 +1,123 @@
+---
+title: "SCI_plots"
+author: "Theo Krueger"
+date: "2024-01-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(igraph)
+library(ggraph)
+library(tidygraph)
+```
+
+```{r data paths}
+data_dominant <- "/Users/tkrueger/Downloads/dominant_net.Rdata"
+data_ZCTA <- "/Users/tkrueger/Downloads/netwk_igraph.Rdata"
+
+dir_out_plot <- "/Users/tkrueger/Desktop/largefiles/Output/USGSlandcover_zip_Custom_groups/figures/SCI/"
+if (!dir.exists(dir_out_plot)){
+  dir.create(dir_out_plot)
+}
+```
+
+```{r functions}
+create_layout_from_igraph <- function(graph) {
+  graph_tbl <- graph %>% 
+  as_tbl_graph() %>% 
+  activate(nodes) %>% 
+  mutate(degree  = centrality_degree()) 
+
+  layout <- create_layout(graph_tbl, layout = 'igraph', algorithm = 'nicely')
+  
+  # layout_center <- layout %>%
+  #   dplyr::mutate(
+  #     x = x - mean(x),
+  #     y = y - mean(y)
+  #   )
+  
+  return(layout)
+}
+
+get_layout_bounds <- function(layout, print = FALSE) {
+  network_bounds <- list()
+  network_bounds[["xmin"]] <- round(min(layout$x), 3)
+  network_bounds[["xmax"]] <- round(max(layout$x), 3)
+  network_bounds[["ymin"]] <- round(min(layout$y), 3)
+  network_bounds[["ymax"]] <- round(max(layout$y), 3)
+
+  if (print) {
+    print("Network coordinates")
+    print(paste0("X: min = ", network_bounds[["xmin"]], "; max = ", network_bounds[["xmax"]]), quote = FALSE)
+    print(paste0("Y: min = ", network_bounds[["ymin"]], "; max = ", network_bounds[["ymax"]]), quote = FALSE)
+  }
+  
+  return(network_bounds)
+}
+```
+
+
+## Dominant network
+
+```{r}
+load(data_dominant)
+```
+
+
+```{r}
+n_clusters <- length(unique(V(dominant.graph)$cluster))
+colrs <- c("#5f797b", "#3d405b", "#f2cc8f","#e07a5f")
+
+```
+
+```{r}
+layout<- create_layout_from_igraph(dominant.graph)
+# rm(dominant.graph)
+nw_bounds <- get_layout_bounds(layout)
+```
+
+
+```{r fig.height=8, fig.width=12}
+p <- ggraph(graph = dominant.graph, layout = "stress")+
+  
+  geom_edge_link(aes(width = average, alpha = average), edge_color = "black")+
+  geom_edge_loop(aes(width = average, alpha = average, direction =  (from - 1) * 360 / length(dominant.graph)),edge_color = "black") +
+  scale_edge_width(range = c(0.2, 2))+
+
+  geom_node_point(aes(color = factor(cluster), size = strength.out)) + 
+  scale_color_manual(values = colrs)+
+  scale_size_continuous(range = c(5, 25))+
+  
+  geom_node_label(aes(label = name),color = "black", repel = T, size = 4, label.r = unit(5, "pt"), label.size = .1) +
+  
+  theme_void() +
+  theme(legend.position = "none") 
+
+ggsave(
+  p,
+  filename = paste0(dir_out_plot, "nw_dominant_cover_base", ".pdf"),
+  device = "pdf",
+  height = 8,
+  width = 12
+)
+p
+```
+
+## ZCTA network
+
+```{r}
+load(data_ZCTA)
+```
+
+```{r}
+layout <- create_layout_from_igraph(netwk.graph)
+rm(netwk.graph)
+nw_bounds <- get_layout_bounds(layout)
+
+```
+

@@ -1,0 +1,69 @@
+---
+title: "SCI_network_stats"
+author: "Theo Krueger"
+date: "2024-01-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(igraph)
+library(ggraph)
+library(tidygraph)
+```
+
+```{r paths}
+data_dominant <- "/Users/tkrueger/Downloads/dominant_net.Rdata"
+data_zip <- "/Users/tkrueger/Downloads/assort_coefS.Rdata"
+
+data_out_assort <- "/Users/tkrueger/Desktop/largefiles/Output/USGSlandcover_zip_Custom_groups/data/nw_ZIP_assortativity.csv"
+```
+
+## ZIP network
+
+```{r}
+load(data_zip)
+
+df_nw_zip_assort <- data.frame(
+  variable = c("shannon", "WI_nondev", "WI_natural", "dominant_land_cover", "dominant_land_cover_by_WI_nondev"),
+  assortativity = c(assort_shannon, assort_NUI, assort_WI, assort_dominant, assort_dominant_NUI)
+)
+
+write.csv(df_nw_zip_assort, file = data_out_assort, row.names = FALSE)
+```
+
+
+## Dominant landcovers 
+
+```{r}
+load(data_dominant)
+```
+
+### Centrality measures
+
+```{r}
+V(dominant.graph)$degree <- degree(dominant.graph)                        # Degree centrality
+V(dominant.graph)$eig <- eigen_centrality(dominant.graph, weights = E(dominant.graph)$average)$vector                    # Eigenvector centrality
+V(dominant.graph)$closeness <- closeness(dominant.graph, weights =(dominant.graph)$average)                  # Closeness centrality
+V(dominant.graph)$betweenness <- betweenness(dominant.graph)              # Vertex betweenness centrality
+
+dominant_graph_centralities_list <- list()
+dominant_graph_centralities_list[["data"]] <-data.frame(
+  row.names   = V(dominant.graph)$name,
+  degree      = V(dominant.graph)$degree,
+  eigenvector = V(dominant.graph)$eig,
+  strength = V(dominant.graph)$strength,
+  strength_noloop = V(dominant.graph)$strength.out,
+  closeness   = V(dominant.graph)$closeness,
+  betweenness = V(dominant.graph)$betweenness
+  ) %>% as.data.frame()
+dominant_graph_centralities_list[["correlations"]] <- round(cor(dominant_graph_centralities_list[["data"]]), 2) %>% as.data.frame()
+
+```
+
+
+
